@@ -58,6 +58,7 @@ hex = "0.4.3"
 
 # Embedded database (optional, behind "db" feature)
 heed = { version = "0.22.1", features = ["serde-json"], optional = true }
+urlencoding = "2.1.3"
 
 [dev-dependencies]
 tempfile = "3.27.0"

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 
+use serde_json::Value;
+
 use crate::client::models::Tool as LLMTool;
 use crate::controller::types::TurnId;
 use crate::permissions::PermissionRequest;
@@ -93,10 +95,11 @@ pub struct DisplayResult {
 }
 
 /// Closure type for generating a dynamic display title from tool input.
-pub type DisplayTitleFn = Box<dyn Fn(&HashMap<String, serde_json::Value>) -> String + Send + Sync>;
+pub type DisplayTitleFn = Box<dyn Fn(&HashMap<String, Value>) -> String + Send + Sync>;
 
 /// Closure type for generating display content from tool input and result.
-pub type DisplayContentFn = Box<dyn Fn(&HashMap<String, serde_json::Value>, &str) -> DisplayResult + Send + Sync>;
+pub type DisplayContentFn =
+    Box<dyn Fn(&HashMap<String, Value>, &str) -> DisplayResult + Send + Sync>;
 
 /// Configuration for how a tool should be displayed in the UI.
 pub struct DisplayConfig {
@@ -112,7 +115,258 @@ impl DisplayConfig {
     /// Create a default display config for a tool.
     pub fn default_for(name: &str) -> Self {
         let name_owned = name.to_owned();
+        Self {
+            display_name: name_owned,
+            display_title: Box::new(|_| String::new()),
+            display_content: Box::new(|_, result| DisplayResult {
+                content: result.to_string(),
+                content_type: ResultContentType::PlainText,
+                is_truncated: false,
+                full_length: result.lines().count(),
+            }),
+        }
+    }
+}
 
+impl std::fmt::Display for ToolResultStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ToolResultStatus::Success => write!(f, "success"),
+            ToolResultStatus::Error => write!(f, "error"),
+            ToolResultStatus::Timeout => write!(f, "timeout"),
+        }
+    }
+}
 
+/// Reuslt from a single tool execution.
+#[derive(Debug, Clone)]
+pub struct ToolResult {
+    /// Session that requested the tool execution.
+    pub session_id: i64,
+    /// Tool name for registry lookup.
+    pub tool_name: String,
+    /// UI-friendly display name from tool's DisplayConfig.
+    pub display_name: Option<String>,
+    /// Links result to tool use request from LLM.
+    pub tool_use_id: String,
+    /// Original input parameters.
+    pub input: HashMap<String, Value>,
+    /// Result content.
+    pub content: String,
+    /// Execution status
+    pub status: ToolResultStatus,
+    /// Error message if status is Error.
+    pub error: Option<String>,
+    /// Assistant turn ID for this tool result.
+    pub turn_id: Option<TurnId>,
+    /// Pre-computed summary for compaction.
+    pub compact_summary: Option<String>,
+}
+
+impl ToolResult {
+    /// Create a successful tool result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn success(
+        session_id: i64,
+        tool_name: String,
+        display_name: Option<String>,
+        tool_use_id: String,
+        input: HashMap<String, Value>,
+        content: String,
+        turn_id: Option<TurnId>,
+        compact_summary: Option<String>,
+    ) -> Self {
+        Self {
+            session_id,
+            tool_name,
+            display_name,
+            tool_use_id,
+            input,
+            content,
+            status: ToolResultStatus::Success,
+            error: None,
+            turn_id,
+            compact_summary,
+        }
+    }
+
+    /// Create an error tool result.
+    pub fn error(
+        session_id: i64,
+        tool_name: String,
+        tool_use_id: String,
+        input: HashMap<String, Value>,
+        error: String,
+        turn_id: Option<TurnId>,
+    ) -> Self {
+        let summary = format!("[{}: error]", tool_name);
+        Self {
+            session_id,
+            tool_name,
+            display_name: None,
+            tool_use_id,
+            input,
+            content: String::new(),
+            status: ToolResultStatus::Error,
+            error: Some(error),
+            turn_id,
+            compact_summary: Some(summary),
+        }
+    }
+
+    /// Create a timeout tool result.
+    pub fn timeout(
+        session_id: i64,
+        tool_name: String,
+        tool_use_id: String,
+        input: HashMap<String, Value>,
+        turn_id: Option<TurnId>,
+    ) -> Self {
+        let summary = format!("[{}: timeout]", tool_name);
+        Self {
+            session_id,
+            tool_name,
+            display_name: None,
+            tool_use_id,
+            input,
+            content: String::new(),
+            status: ToolResultStatus::Timeout,
+            error: Some("Tool execution timed out".to_string()),
+            turn_id,
+            compact_summary: Some(summary),
+        }
+    }
+}
+
+/// Batch result containing all results from parallel tool executions.
+#[derive(Debug, Clone)]
+pub struct ToolBatchResult {
+    /// Unique batch identifier.
+    pub batch_id: i64,
+    /// Session that requested the batch
+    pub session_id: i64,
+    /// Assistant turn ID for this batch.
+    pub turn_id: Option<TurnId>,
+    /// All results in original tool_use order.
+    pub results: Vec<ToolResult>,
+}
+
+/// Request to execute a tool.
+#[derive(Debug, Clone)]
+pub struct ToolRequest {
+    /// Tool use ID from the LLM.
+    pub tool_use_id: String,
+    /// Name of the tool to execute.
+    pub tool_name: String,
+    /// Input parameters.
+    pub input: HashMap<String, Value>,
+}
+
+/// Tool definitions for the LLM.
+#[derive(Debug, Clone)]
+pub struct ToolDefinition {
+    /// Tool name (primary identifier).
+    pub name: String,
+    /// Tool description.
+    pub description: String,
+    /// JSON schema for input parameters.
+    pub input_schema: String,
+}
+
+/// Trait for executable tools.
+pub trait Executable: Send + Sync {
+    /// Get the tool name.
+    fn name(&self) -> &str;
+
+    /// Get the tool description.
+    fn description(&self) -> &str;
+
+    /// Get the input schema as JSON string.
+    fn input_schema(&self) -> &str;
+
+    /// Get the tool type.
+    fn tool_type(&self) -> ToolType;
+
+    /// Execute the tool with given input.
+    fn execute(
+        &self,
+        context: ToolContext,
+        input: HashMap<String, Value>,
+    ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
+
+    /// Convert to LLM tool definition.
+    fn to_definition(&self) -> ToolDefinition {
+        ToolDefinition {
+            name: self.name().to_string(),
+            description: self.description().to_string(),
+            input_schema: self.input_schema().to_string(),
+        }
+    }
+
+    /// Convert to LLMTool for provider APIs.
+    fn to_llm_tool(&self) -> LLMTool {
+        LLMTool::new(
+            self.name(),
+            self.description(),
+            // TODO: this unwrap might come back to haunt us later, remember to sort out this debt
+            serde_json::from_str(self.input_schema()).unwrap(),
+        )
+    }
+
+    /// Get display configuration for UI rendering.
+    fn display_config(&self) -> DisplayConfig {
+        DisplayConfig::default_for(self.name())
+    }
+
+    /// Generate compact summary for context compaction.
+    fn compact_summary(&self, _input: &HashMap<String, Value>, _result: &str) -> String {
+        format!("[{}: completed]", self.name())
+    }
+
+    /// Return the permissions required to execute this tool with the given input.
+    ///
+    /// This method is called by the batch executor to collect all permission requests
+    /// from tools before execution. If a tool returns `Some(vec![...])`, those permissions
+    /// will be requested from the user before execution.
+    ///
+    /// # Arguments
+    /// * `context` - The tool context including session and tool use IDs
+    /// * `input` - The input parameters for this tool call
+    ///
+    /// # Returns
+    /// * `None` - No permissions required (default)
+    /// * `Some(Vec<PermissionRequest>)` - List of permissions to request
+    fn required_permissions(
+        &self,
+        _context: &ToolContext,
+        _input: &HashMap<String, Value>,
+    ) -> Option<Vec<PermissionRequest>> {
+        None // Default: no permissions required
+    }
+
+    /// Whether this tool handles its own permission flow internally.
+    ///
+    /// Tools that return `true` will NOT have their permissions checked by the batch
+    /// executor. Use this for tools that have special permissions handling needs, such as:
+    /// - AskForPermissions (explicitly requests permission from user)
+    /// - AskUserQuestions (user interaction, not permission-based)
+    ///
+    /// Default: `false` (executor handles permissions)
+    fn handles_own_permissions(&self) -> bool {
+        false
+    }
+
+    /// Cleans up any session-specific state when a session is removed.
+    ///
+    /// Tools that maintain per-session state (e.g., working directories, caches)
+    /// should implement this to clean up when sessions are destroyed, preventing
+    /// unbounded memory growth from abandoned sessions.
+    ///
+    /// # Arguments
+    /// * `session_id` - The session being removed
+    ///
+    /// Default: no-op (no session state to clean up)
+    fn cleanup_session(&self, _session_id: i64) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
+        Box::pin(async {})
     }
 }

@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value, json};
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{
     Content, ImageSource, Message, MessageOptions, Role, Tool, ToolChoice, ToolUse,
 };
@@ -64,9 +64,9 @@ pub fn build_request_body(
     options: &MessageOptions,
     default_model: &str,
     streaming: bool,
-) -> Result<String, LlmError> {
+) -> Result<String, LLMError> {
     if messages.is_empty() {
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             ERROR_INVALID_REQUEST,
             "At least one message is required",
         ));
@@ -128,23 +128,23 @@ pub fn build_request_body(
         .collect::<Result<Vec<_>, _>>()?;
     body.insert("messages".to_string(), Value::Array(messages_arr));
 
-    serde_json::to_string(&body).map_err(|e| LlmError::new("SERIALIZE_ERROR", e.to_string()))
+    serde_json::to_string(&body).map_err(|e| LLMError::new("SERIALIZE_ERROR", e.to_string()))
 }
 
 /// Parses the OpenAI API response and extracts the assistant message.
-pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
+pub fn parse_response(response_body: &str) -> Result<Message, LLMError> {
     let parsed: Value = serde_json::from_str(response_body)
-        .map_err(|e| LlmError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
+        .map_err(|e| LLMError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
 
     // API error.
     if let Some(error_msg) = parsed["error"]["message"].as_str() {
         let error_type = parsed["error"]["type"].as_str().unwrap_or("api_error");
-        return Err(LlmError::new(error_type, error_msg));
+        return Err(LLMError::new(error_type, error_msg));
     }
 
     let message = &parsed["choices"][0]["message"];
     if message.is_null() {
-        return Err(LlmError::new(ERROR_PARSE, "No message found in response"));
+        return Err(LLMError::new(ERROR_PARSE, "No message found in response"));
     }
 
     let mut content_blocks: Vec<Content> = Vec::new();
@@ -164,7 +164,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
     }
 
     if content_blocks.is_empty() {
-        return Err(LlmError::new(ERROR_PARSE, "No content found in response"));
+        return Err(LLMError::new(ERROR_PARSE, "No content found in response"));
     }
 
     Ok(Message::with_content(Role::Assistant, content_blocks))
@@ -172,7 +172,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
 
 // === Private Helpers ===
 
-fn message_to_value(msg: &Message) -> Result<Value, LlmError> {
+fn message_to_value(msg: &Message) -> Result<Value, LLMError> {
     let has_tool_results = msg
         .content
         .iter()

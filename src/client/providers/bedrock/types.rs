@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value, json};
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{Content, Message, MessageOptions, Role, Tool, ToolChoice, ToolUse};
 use crate::client::providers::common::extract_text_content;
 
@@ -59,7 +59,7 @@ pub fn get_converse_stream_url(region: &str, model: &str) -> String {
 pub fn build_request_body(
     messages: &[Message],
     options: &MessageOptions,
-) -> Result<String, LlmError> {
+) -> Result<String, LLMError> {
     // Separate system messages from conversation
     let mut system_texts: Vec<String> = Vec::new();
     let mut conversation_messages: Vec<&Message> = Vec::new();
@@ -80,7 +80,7 @@ pub fn build_request_body(
     }
 
     if conversation_messages.is_empty() {
-        return Err(LlmError::new(ERROR_INVALID_REQUEST, MSG_NO_MESSAGES));
+        return Err(LLMError::new(ERROR_INVALID_REQUEST, MSG_NO_MESSAGES));
     }
 
     let mut body = Map::new();
@@ -136,26 +136,26 @@ pub fn build_request_body(
         body.insert("toolConfig".to_string(), Value::Object(tool_config));
     }
 
-    serde_json::to_string(&body).map_err(|e| LlmError::new("SERIALIZE_ERROR", e.to_string()))
+    serde_json::to_string(&body).map_err(|e| LLMError::new("SERIALIZE_ERROR", e.to_string()))
 }
 
 /// Parses the Bedrock Converse API response and extracts the assistant message.
-pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
+pub fn parse_response(response_body: &str) -> Result<Message, LLMError> {
     let parsed: Value = serde_json::from_str(response_body)
-        .map_err(|e| LlmError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
+        .map_err(|e| LLMError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
 
     // Check for API error response
     if let Some(error_msg) = parsed["message"].as_str()
         && parsed.get("output").is_none()
     {
         let error_type = parsed["__type"].as_str().unwrap_or("BedrockError");
-        return Err(LlmError::new(error_type, error_msg));
+        return Err(LLMError::new(error_type, error_msg));
     }
 
     // Extract output message
     let output = &parsed["output"]["message"];
     if output.is_null() {
-        return Err(LlmError::new(ERROR_PARSE, "No content found in response"));
+        return Err(LLMError::new(ERROR_PARSE, "No content found in response"));
     }
 
     let mut content_blocks: Vec<Content> = Vec::new();
@@ -177,7 +177,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
     }
 
     if content_blocks.is_empty() {
-        return Err(LlmError::new(ERROR_PARSE, "No content found in response"));
+        return Err(LLMError::new(ERROR_PARSE, "No content found in response"));
     }
 
     Ok(Message::with_content(Role::Assistant, content_blocks))

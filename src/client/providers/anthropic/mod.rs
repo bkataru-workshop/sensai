@@ -4,10 +4,10 @@ mod types;
 use async_stream::stream;
 use futures::Stream;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::http::HttpClient;
 use crate::client::models::{Message, MessageOptions, StreamEvent};
-use crate::client::traits::{LlmProvider, StreamMsgFuture};
+use crate::client::traits::{LLMProvider, StreamMsgFuture};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -26,13 +26,13 @@ impl AnthropicProvider {
     }
 }
 
-impl LlmProvider for AnthropicProvider {
+impl LLMProvider for AnthropicProvider {
     fn send_msg(
         &self,
         client: &HttpClient,
         messages: &[Message],
         options: &MessageOptions,
-    ) -> Pin<Box<dyn Future<Output = Result<Message, LlmError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Message, LLMError>> + Send>> {
         // Clone data for the async block
         let client = client.clone();
         let api_key = self.api_key.clone();
@@ -99,7 +99,7 @@ impl LlmProvider for AnthropicProvider {
                             if let Ok(text) = std::str::from_utf8(&bytes) {
                                 buffer.push_str(text);
                             } else {
-                                yield Err(LlmError::new("SSE_DECODE_ERROR", "Invalid UTF-8 in stream"));
+                                yield Err(LLMError::new("SSE_DECODE_ERROR", "Invalid UTF-8 in stream"));
                                 break;
                             }
 
@@ -129,7 +129,7 @@ impl LlmProvider for AnthropicProvider {
 
             Ok(Box::pin(event_stream)
                 as Pin<
-                    Box<dyn Stream<Item = Result<StreamEvent, LlmError>> + Send>,
+                    Box<dyn Stream<Item = Result<StreamEvent, LLMError>> + Send>,
                 >)
         })
     }

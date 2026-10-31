@@ -4,7 +4,7 @@
 
 use serde_json::Value;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{ContentBlockType, StreamEvent, Usage};
 
 // == Constants ==
@@ -94,7 +94,7 @@ pub fn parse_event_stream(buffer: &[u8]) -> (Vec<BedrockEvent>, Vec<u8>) {
 pub fn parse_stream_event(
     event: &BedrockEvent,
     state: &mut StreamState,
-) -> Result<Vec<StreamEvent>, LlmError> {
+) -> Result<Vec<StreamEvent>, LLMError> {
     let json = parse_json(&event.payload)?;
     let mut events = Vec::new();
 
@@ -180,9 +180,9 @@ pub fn parse_stream_event(
 
 // == Private helpers ==
 
-fn parse_json(data: &str) -> Result<Value, LlmError> {
+fn parse_json(data: &str) -> Result<Value, LLMError> {
     serde_json::from_str(data)
-        .map_err(|e| LlmError::new(ERROR_EVENT_PARSE, format!("Invalid JSON: {}", e)))
+        .map_err(|e| LLMError::new(ERROR_EVENT_PARSE, format!("Invalid JSON: {}", e)))
 }
 
 /// Extract `:event-type` header value from raw header bytes.

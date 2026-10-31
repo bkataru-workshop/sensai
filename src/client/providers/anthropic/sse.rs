@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{ContentBlockType, StreamEvent, Usage};
 
 /// Error code for SSE parsing errors (consistent with other providers).
@@ -70,7 +70,7 @@ pub fn parse_sse_chunk(buffer: &str) -> (Vec<SseEvent>, String) {
 }
 
 /// Parse an SSE event into a `StreamEvent`
-pub fn parse_stream_event(sse: &SseEvent) -> Result<Option<StreamEvent>, LlmError> {
+pub fn parse_stream_event(sse: &SseEvent) -> Result<Option<StreamEvent>, LLMError> {
     match sse.event.as_str() {
         "message_start" => Ok(parse_message_start(&parse_json(&sse.data)?)),
         "content_block_start" => Ok(parse_content_block_start(&parse_json(&sse.data)?)),
@@ -84,9 +84,9 @@ pub fn parse_stream_event(sse: &SseEvent) -> Result<Option<StreamEvent>, LlmErro
     }
 }
 
-fn parse_json(data: &str) -> Result<Value, LlmError> {
+fn parse_json(data: &str) -> Result<Value, LLMError> {
     serde_json::from_str(data)
-        .map_err(|e| LlmError::new(ERROR_SSE_PARSE, format!("Invalid JSON: {}", e)))
+        .map_err(|e| LLMError::new(ERROR_SSE_PARSE, format!("Invalid JSON: {}", e)))
 }
 
 fn parse_message_start(json: &Value) -> Option<StreamEvent> {
@@ -154,9 +154,9 @@ fn parse_message_delta(json: &Value) -> Option<StreamEvent> {
     Some(StreamEvent::MessageDelta { stop_reason, usage })
 }
 
-fn parse_error(json: &Value) -> LlmError {
+fn parse_error(json: &Value) -> LLMError {
     let error = &json["error"];
-    LlmError::new(
+    LLMError::new(
         error["type"].as_str().unwrap_or("unknown"),
         error["message"].as_str().unwrap_or("Unknown error"),
     )

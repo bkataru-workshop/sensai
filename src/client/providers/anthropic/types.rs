@@ -1,6 +1,6 @@
 use serde_json::{Map, Value, json};
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{
     Content, ImageSource, Message, MessageOptions, Role, Tool, ToolChoice, ToolUse,
 };
@@ -16,7 +16,7 @@ pub fn build_request_body(
     options: &MessageOptions,
     default_model: &str,
     streaming: bool,
-) -> Result<String, LlmError> {
+) -> Result<String, LLMError> {
     let mut system_prompt: Option<String> = None;
     let mut conversation_messages: Vec<&Message> = Vec::new();
 
@@ -39,7 +39,7 @@ pub fn build_request_body(
     }
 
     if conversation_messages.is_empty() {
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             "INVALID_REQUEST",
             "At least one user or assistant message is required",
         ));
@@ -104,7 +104,7 @@ pub fn build_request_body(
         body.insert("stream".to_string(), json!(true));
     }
 
-    serde_json::to_string(&body).map_err(|e| LlmError::new("SERIALIZE_ERROR", e.to_string()))
+    serde_json::to_string(&body).map_err(|e| LLMError::new("SERIALIZE_ERROR", e.to_string()))
 }
 
 fn message_to_value(msg: &Message) -> Value {
@@ -180,16 +180,16 @@ pub fn get_api_url() -> &'static str {
 }
 
 /// Parses the Anthropic API response and extracts the assistant message.
-pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
+pub fn parse_response(response_body: &str) -> Result<Message, LLMError> {
     let parsed: Value = serde_json::from_str(response_body)
-        .map_err(|e| LlmError::new("PARSE_ERROR", format!("Failed to parse response: {}", e)))?;
+        .map_err(|e| LLMError::new("PARSE_ERROR", format!("Failed to parse response: {}", e)))?;
 
     // Check for API error response
     if let Some(error_type) = parsed["error"]["type"].as_str() {
         let error_msg = parsed["error"]["message"]
             .as_str()
             .unwrap_or("Malformed error response");
-        return Err(LlmError::new(error_type, error_msg));
+        return Err(LLMError::new(error_type, error_msg));
     }
 
     // Extract content from successful response
@@ -226,7 +226,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
     }
 
     if content_blocks.is_empty() {
-        return Err(LlmError::new("PARSE_ERROR", "No content found in response"));
+        return Err(LLMError::new("PARSE_ERROR", "No content found in response"));
     }
 
     Ok(Message::with_content(Role::Assistant, content_blocks))

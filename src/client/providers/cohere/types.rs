@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value, json};
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{Content, Message, MessageOptions, Role, Tool, ToolChoice, ToolUse};
 
 const API_URL: &str = "https://api.cohere.com/v2/chat";
@@ -17,9 +17,9 @@ pub fn get_api_url() -> &'static str {
 }
 
 /// Returns the HTTP headers required for the Cohere API.
-pub fn get_request_headers(api_key: &str) -> Result<Vec<(&'static str, String)>, LlmError> {
+pub fn get_request_headers(api_key: &str) -> Result<Vec<(&'static str, String)>, LLMError> {
     if api_key.is_empty() {
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             ERROR_INVALID_REQUEST,
             "API key cannot be empty",
         ));
@@ -36,9 +36,9 @@ pub fn build_request_body(
     options: &MessageOptions,
     default_model: &str,
     streaming: bool,
-) -> Result<String, LlmError> {
+) -> Result<String, LLMError> {
     if messages.is_empty() {
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             ERROR_INVALID_REQUEST,
             "At least one message is required",
         ));
@@ -91,18 +91,18 @@ pub fn build_request_body(
         }
     }
 
-    serde_json::to_string(&body).map_err(|e| LlmError::new("SERIALIZE_ERROR", e.to_string()))
+    serde_json::to_string(&body).map_err(|e| LLMError::new("SERIALIZE_ERROR", e.to_string()))
 }
 
 /// Parses the Cohere API response and extracts the assistant message.
-pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
+pub fn parse_response(response_body: &str) -> Result<Message, LLMError> {
     let parsed: Value = serde_json::from_str(response_body)
-        .map_err(|e| LlmError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
+        .map_err(|e| LLMError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
 
     // Check for error response (Cohere returns errors with a "message" and no content).
     if let Some(error_msg) = parsed["message"].as_str() {
         if parsed.get("text").is_none() && parsed.get("tool_calls").is_none() {
-            return Err(LlmError::new("COHERE_ERROR", error_msg));
+            return Err(LLMError::new("COHERE_ERROR", error_msg));
         }
     }
 
@@ -142,7 +142,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
     }
 
     if content_blocks.is_empty() {
-        return Err(LlmError::new(ERROR_PARSE, "No content found in response"));
+        return Err(LLMError::new(ERROR_PARSE, "No content found in response"));
     }
 
     Ok(Message::with_content(Role::Assistant, content_blocks))

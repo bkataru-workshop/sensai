@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{ContentBlockType, StreamEvent, Usage};
 
 const ERROR_SSE_PARSE: &str = "SSE_PARSE_ERROR";
@@ -73,14 +73,14 @@ pub fn parse_sse_chunk(buffer: &str) -> (Vec<SseEvent>, String) {
 pub fn parse_stream_event(
     sse: &SseEvent,
     state: &mut StreamState,
-) -> Result<Vec<StreamEvent>, LlmError> {
+) -> Result<Vec<StreamEvent>, LLMError> {
     let json = parse_json(&sse.data)?;
 
     // Check for error response.
     if let Some(error) = json.get("error") {
         let code = error["code"].as_i64().unwrap_or(0);
         let msg = error["message"].as_str().unwrap_or("Unknown error");
-        return Err(LlmError::new(format!("GEMINI_ERROR_{}", code), msg));
+        return Err(LLMError::new(format!("GEMINI_ERROR_{}", code), msg));
     }
 
     let mut events = Vec::new();
@@ -219,9 +219,9 @@ pub fn parse_stream_event(
     Ok(events)
 }
 
-fn parse_json(data: &str) -> Result<Value, LlmError> {
+fn parse_json(data: &str) -> Result<Value, LLMError> {
     serde_json::from_str(data)
-        .map_err(|e| LlmError::new(ERROR_SSE_PARSE, format!("Invalid JSON: {}", e)))
+        .map_err(|e| LLMError::new(ERROR_SSE_PARSE, format!("Invalid JSON: {}", e)))
 }
 
 fn map_finish_reason(reason: &str) -> String {

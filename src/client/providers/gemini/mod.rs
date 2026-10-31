@@ -8,10 +8,10 @@ use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::http::HttpClient;
 use crate::client::models::{Message, MessageOptions, StreamEvent};
-use crate::client::traits::{LlmProvider, StreamMsgFuture};
+use crate::client::traits::{LLMProvider, StreamMsgFuture};
 
 /// Google Gemini API provider.
 pub struct GeminiProvider {
@@ -29,13 +29,13 @@ impl GeminiProvider {
     }
 }
 
-impl LlmProvider for GeminiProvider {
+impl LLMProvider for GeminiProvider {
     fn send_msg(
         &self,
         client: &HttpClient,
         messages: &[Message],
         options: &MessageOptions,
-    ) -> Pin<Box<dyn Future<Output = Result<Message, LlmError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Message, LLMError>> + Send>> {
         let client = client.clone();
         let api_key = self.api_key.clone();
         let model = options.model.as_deref().unwrap_or(&self.model).to_string();
@@ -87,7 +87,7 @@ impl LlmProvider for GeminiProvider {
                             match std::str::from_utf8(&bytes) {
                                 Ok(text) => buffer.push_str(text),
                                 Err(_) => {
-                                    yield Err(LlmError::new("SSE_DECODE_ERROR", "Invalid UTF-8 in stream"));
+                                    yield Err(LLMError::new("SSE_DECODE_ERROR", "Invalid UTF-8 in stream"));
                                     return;
                                 }
                             }
@@ -130,7 +130,7 @@ impl LlmProvider for GeminiProvider {
 
             Ok(Box::pin(event_stream)
                 as Pin<
-                    Box<dyn Stream<Item = Result<StreamEvent, LlmError>> + Send>,
+                    Box<dyn Stream<Item = Result<StreamEvent, LLMError>> + Send>,
                 >)
         })
     }

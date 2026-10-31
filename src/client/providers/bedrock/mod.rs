@@ -11,10 +11,10 @@ use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::http::HttpClient;
 use crate::client::models::{Message, MessageOptions, StreamEvent};
-use crate::client::traits::{LlmProvider, StreamMsgFuture};
+use crate::client::traits::{LLMProvider, StreamMsgFuture};
 
 // == Provider ==
 
@@ -73,13 +73,13 @@ impl BedrockProvider {
     }
 }
 
-impl LlmProvider for BedrockProvider {
+impl LLMProvider for BedrockProvider {
     fn send_msg(
         &self,
         client: &HttpClient,
         messages: &[Message],
         options: &MessageOptions,
-    ) -> Pin<Box<dyn Future<Output = Result<Message, LlmError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Message, LLMError>> + Send>> {
         let client = client.clone();
         let credentials = self.credentials.clone();
         let region = self.region.clone();
@@ -174,7 +174,7 @@ impl LlmProvider for BedrockProvider {
 
             Ok(Box::pin(event_stream)
                 as Pin<
-                    Box<dyn Stream<Item = Result<StreamEvent, LlmError>> + Send>,
+                    Box<dyn Stream<Item = Result<StreamEvent, LLMError>> + Send>,
                 >)
         })
     }

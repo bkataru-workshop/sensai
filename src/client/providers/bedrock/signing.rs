@@ -1,7 +1,7 @@
 //! AWS SigV4 signing implementation for Bedrock API requests.
 
 use super::BedrockCredentials;
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 
 use ring::digest;
 use ring::hmac;
@@ -23,7 +23,7 @@ pub fn sign_request(
     url: &str,
     body: &str,
     streaming: bool,
-) -> Result<Vec<(String, String)>, LlmError> {
+) -> Result<Vec<(String, String)>, LLMError> {
     todo!()
 }
 
@@ -35,10 +35,10 @@ struct ParsedUrl {
     query: Option<String>,
 }
 
-fn parse_url(url: &str) -> Result<ParsedUrl, LlmError> {
+fn parse_url(url: &str) -> Result<ParsedUrl, LLMError> {
     let url = url
         .strip_prefix("https://")
-        .ok_or_else(|| LlmError::new("INVALID_URL", "URL must start with https://"))?;
+        .ok_or_else(|| LLMError::new("INVALID_URL", "URL must start with https://"))?;
 
     let (host_and_path, query) = match url.split_once('?') {
         Some((hp, q)) => (hp, Some(q.to_string())),

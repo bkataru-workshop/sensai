@@ -11,7 +11,7 @@ use hyper_util::client::legacy::Client;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::rt::TokioExecutor;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 
 type HttpsClient = Client<HttpsConnector<HttpConnector>, Full<Bytes>>;
 
@@ -95,11 +95,11 @@ fn rand_factor() -> f64 {
 
 impl HttpClient {
     /// Create a new HTTP client with native TLS roots.
-    pub fn new() -> Result<Self, LlmError> {
+    pub fn new() -> Result<Self, LLMError> {
         let https = HttpsConnectorBuilder::new()
             .with_native_roots()
             .map_err(|e| {
-                LlmError::new(
+                LLMError::new(
                     "TLS_INIT_FAILED",
                     format!("failed to load native TLS roots: {}", e),
                 )
@@ -113,31 +113,31 @@ impl HttpClient {
     }
 
     /// Send a GET request and return the response body as a string.
-    pub async fn get(&self, uri: &str) -> Result<String, LlmError> {
+    pub async fn get(&self, uri: &str) -> Result<String, LLMError> {
         let uri: hyper::Uri = uri
             .parse()
-            .map_err(|e| LlmError::new("HTTP_INVALID_URI", format!("{}", e)))?;
+            .map_err(|e| LLMError::new("HTTP_INVALID_URI", format!("{}", e)))?;
 
         let request = Request::builder()
             .method(Method::GET)
             .uri(uri)
             .body(Full::new(Bytes::new()))
-            .map_err(|e| LlmError::new("HTTP_REQUEST_BUILD", format!("{}", e)))?;
+            .map_err(|e| LLMError::new("HTTP_REQUEST_BUILD", format!("{}", e)))?;
 
         let res = self
             .client
             .request(request)
             .await
-            .map_err(|e| LlmError::new("HTTP_REQUEST_FAILED", format!("{}", e)))?;
+            .map_err(|e| LLMError::new("HTTP_REQUEST_FAILED", format!("{}", e)))?;
 
         let body = res
             .collect()
             .await
-            .map_err(|e| LlmError::new("HTTP_BODY_READ", format!("{}", e)))?
+            .map_err(|e| LLMError::new("HTTP_BODY_READ", format!("{}", e)))?
             .to_bytes();
 
         String::from_utf8(body.to_vec())
-            .map_err(|e| LlmError::new("HTTP_INVALID_UTF8", format!("{}", e)))
+            .map_err(|e| LLMError::new("HTTP_INVALID_UTF8", format!("{}", e)))
     }
 
     /// Send a POST request with automatic retry on rate limits.
@@ -148,10 +148,10 @@ impl HttpClient {
         uri: &str,
         headers: &[(&str, &str)],
         body: &str,
-    ) -> Result<String, LlmError> {
+    ) -> Result<String, LLMError> {
         let parsed_uri: hyper::Uri = uri
             .parse()
-            .map_err(|e| LlmError::new("HTTP_INVALID_URI", format!("{}", e)))?;
+            .map_err(|e| LLMError::new("HTTP_INVALID_URI", format!("{}", e)))?;
 
         let mut last_error = None;
 
@@ -166,24 +166,24 @@ impl HttpClient {
 
             let request = builder
                 .body(Full::new(Bytes::from(body.to_string())))
-                .map_err(|e| LlmError::new("HTTP_REQUEST_BUILD", format!("{}", e)))?;
+                .map_err(|e| LLMError::new("HTTP_REQUEST_BUILD", format!("{}", e)))?;
 
             let res = self
                 .client
                 .request(request)
                 .await
-                .map_err(|e| LlmError::new("HTTP_REQUEST_FAILED", format!("{}", e)))?;
+                .map_err(|e| LLMError::new("HTTP_REQUEST_FAILED", format!("{}", e)))?;
 
             let status = res.status();
 
             let response_body = res
                 .collect()
                 .await
-                .map_err(|e| LlmError::new("HTTP_BODY_READ", format!("{}", e)))?
+                .map_err(|e| LLMError::new("HTTP_BODY_READ", format!("{}", e)))?
                 .to_bytes();
 
             let response_text = String::from_utf8(response_body.to_vec())
-                .map_err(|e| LlmError::new("HTTP_INVALID_UTF8", format!("{}", e)))?;
+                .map_err(|e| LLMError::new("HTTP_INVALID_UTF8", format!("{}", e)))?;
 
             // Check for rate limit (429) or overloaded (529)
             if (status == StatusCode::TOO_MANY_REQUESTS || status.as_u16() == 529)
@@ -198,7 +198,7 @@ impl HttpClient {
                     "Rate limited, retrying after delay"
                 );
                 tokio::time::sleep(delay).await;
-                last_error = Some(LlmError::new(
+                last_error = Some(LLMError::new(
                     format!("HTTP_{}", status.as_u16()),
                     response_text,
                 ));
@@ -211,7 +211,7 @@ impl HttpClient {
 
         // All retries exhausted
         Err(last_error.unwrap_or_else(|| {
-            LlmError::new("RATE_LIMIT_EXHAUSTED", "Rate limit retries exhausted")
+            LLMError::new("RATE_LIMIT_EXHAUSTED", "Rate limit retries exhausted")
         }))
     }
 
@@ -221,10 +221,10 @@ impl HttpClient {
         uri: &str,
         headers: &[(&str, &str)],
         body: &str,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, LlmError>> + Send>>, LlmError> {
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, LLMError>> + Send>>, LLMError> {
         let parsed_uri: hyper::Uri = uri
             .parse()
-            .map_err(|e| LlmError::new("HTTP_INVALID_URI", format!("{}", e)))?;
+            .map_err(|e| LLMError::new("HTTP_INVALID_URI", format!("{}", e)))?;
 
         let mut last_error = None;
 
@@ -239,13 +239,13 @@ impl HttpClient {
 
             let request = builder
                 .body(Full::new(Bytes::from(body.to_string())))
-                .map_err(|e| LlmError::new("HTTP_REQUEST_BUILD", format!("{}", e)))?;
+                .map_err(|e| LLMError::new("HTTP_REQUEST_BUILD", format!("{}", e)))?;
 
             let res = self
                 .client
                 .request(request)
                 .await
-                .map_err(|e| LlmError::new("HTTP_REQUEST_FAILED", format!("{}", e)))?;
+                .map_err(|e| LLMError::new("HTTP_REQUEST_FAILED", format!("{}", e)))?;
 
             let status = res.status();
 
@@ -254,7 +254,7 @@ impl HttpClient {
                 let error_body = res
                     .collect()
                     .await
-                    .map_err(|e| LlmError::new("HTTP_BODY_READ", format!("{}", e)))?
+                    .map_err(|e| LLMError::new("HTTP_BODY_READ", format!("{}", e)))?
                     .to_bytes();
                 let error_text = String::from_utf8_lossy(&error_body).to_string();
 
@@ -268,7 +268,7 @@ impl HttpClient {
                         "Rate limited on stream request, retrying after delay"
                     );
                     tokio::time::sleep(delay).await;
-                    last_error = Some(LlmError::new(
+                    last_error = Some(LLMError::new(
                         format!("HTTP_{}", status.as_u16()),
                         error_text,
                     ));
@@ -276,7 +276,7 @@ impl HttpClient {
                 }
 
                 // Max retries exceeded
-                return Err(LlmError::new(
+                return Err(LLMError::new(
                     format!("HTTP_{}", status.as_u16()),
                     error_text,
                 ));
@@ -287,10 +287,10 @@ impl HttpClient {
                 let error_body = res
                     .collect()
                     .await
-                    .map_err(|e| LlmError::new("HTTP_BODY_READ", format!("{}", e)))?
+                    .map_err(|e| LLMError::new("HTTP_BODY_READ", format!("{}", e)))?
                     .to_bytes();
                 let error_text = String::from_utf8_lossy(&error_body);
-                return Err(LlmError::new(
+                return Err(LLMError::new(
                     format!("HTTP_{}", status.as_u16()),
                     error_text.to_string(),
                 ));
@@ -309,7 +309,7 @@ impl HttpClient {
                             }
                         }
                         Err(e) => {
-                            yield Err(LlmError::new("HTTP_STREAM_ERROR", format!("{}", e)));
+                            yield Err(LLMError::new("HTTP_STREAM_ERROR", format!("{}", e)));
                             break;
                         }
                     }
@@ -317,12 +317,12 @@ impl HttpClient {
             };
 
             return Ok(Box::pin(byte_stream)
-                as Pin<Box<dyn Stream<Item = Result<Bytes, LlmError>> + Send>>);
+                as Pin<Box<dyn Stream<Item = Result<Bytes, LLMError>> + Send>>);
         }
 
         // All retries exhausted
         Err(last_error.unwrap_or_else(|| {
-            LlmError::new("RATE_LIMIT_EXHAUSTED", "Rate limit retries exhausted")
+            LLMError::new("RATE_LIMIT_EXHAUSTED", "Rate limit retries exhausted")
         }))
     }
 }

@@ -1,7 +1,7 @@
 ///! Gemini API request/response types and serialization.
 use serde_json::{Map, Value, json};
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::models::{
     Content, GroundingChunk, GroundingMetadata, GroundingSupport, Message, MessageOptions,
     ResponseMetadata, Role, SafetyRating, ToolChoice, ToolUse,
@@ -32,9 +32,9 @@ pub fn get_streaming_api_url(model: &str) -> String {
 }
 
 /// Returns the HTTP headers required for the Gemini API.
-pub fn get_request_headers(api_key: &str) -> Result<Vec<(&'static str, String)>, LlmError> {
+pub fn get_request_headers(api_key: &str) -> Result<Vec<(&'static str, String)>, LLMError> {
     if api_key.is_empty() {
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             ERROR_INVALID_REQUEST,
             "API key cannot be empty",
         ));
@@ -51,7 +51,7 @@ pub fn get_request_headers(api_key: &str) -> Result<Vec<(&'static str, String)>,
 pub fn build_request_body(
     messages: &[Message],
     options: &MessageOptions,
-) -> Result<String, LlmError> {
+) -> Result<String, LLMError> {
     let mut system_instructions: Option<String> = None;
     let mut contents: Vec<&Message> = Vec::new();
 
@@ -72,7 +72,7 @@ pub fn build_request_body(
     }
 
     if contents.is_empty() {
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             ERROR_INVALID_REQUEST,
             "At least one user or assistant message is required",
         ));
@@ -123,19 +123,19 @@ pub fn build_request_body(
         body.insert("toolConfig".to_string(), tool_choice_to_value(tool_choice));
     }
 
-    serde_json::to_string(&body).map_err(|e| LlmError::new("SERIALIZE_ERROR", e.to_string()))
+    serde_json::to_string(&body).map_err(|e| LLMError::new("SERIALIZE_ERROR", e.to_string()))
 }
 
 /// Parses the Gemini API response and extracts the assistant message.
-pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
+pub fn parse_response(response_body: &str) -> Result<Message, LLMError> {
     let parsed: Value = serde_json::from_str(response_body)
-        .map_err(|e| LlmError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
+        .map_err(|e| LLMError::new(ERROR_PARSE, format!("Failed to parse response: {}", e)))?;
 
     // API error.
     if let Some(error) = parsed.get("error") {
         let code = error["code"].as_i64().unwrap_or(0);
         let msg = error["message"].as_str().unwrap_or("Unknown error");
-        return Err(LlmError::new(format!("GEMINI_ERROR_{}", code), msg));
+        return Err(LLMError::new(format!("GEMINI_ERROR_{}", code), msg));
     }
 
     // Prompt blocked.
@@ -143,7 +143,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
         && let Some(block_reason) = feedback["blockReason"].as_str()
     {
         let safety_info = format_safety_info(feedback["safetyRatings"].as_array());
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             ERROR_PROMPT_BLOCKED,
             format!(
                 "Prompt blocked by Gemini safety filters. Reason: {}. {}",
@@ -156,7 +156,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
     let candidates = parsed["candidates"]
         .as_array()
         .filter(|a| !a.is_empty())
-        .ok_or_else(|| LlmError::new(ERROR_PARSE, "No candidates found in response"))?;
+        .ok_or_else(|| LLMError::new(ERROR_PARSE, "No candidates found in response"))?;
 
     let candidate = &candidates[0];
 
@@ -165,7 +165,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
         && matches!(finish_reason, "SAFETY" | "RECITATION" | "OTHER")
     {
         let safety_info = format_blocked_info(candidate["safetyRatings"].as_array());
-        return Err(LlmError::new(
+        return Err(LLMError::new(
             ERROR_CONTENT_BLOCKED,
             format!(
                 "Response blocked by Gemini. Reason: {}. {}",
@@ -194,7 +194,7 @@ pub fn parse_response(response_body: &str) -> Result<Message, LlmError> {
     }
 
     if content_blocks.is_empty() {
-        return Err(LlmError::new(ERROR_PARSE, "No content found in response"));
+        return Err(LLMError::new(ERROR_PARSE, "No content found in response"));
     }
 
     // Extract metadata.

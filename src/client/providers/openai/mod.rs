@@ -11,10 +11,10 @@ use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::client::error::LlmError;
+use crate::client::error::LLMError;
 use crate::client::http::HttpClient;
 use crate::client::models::{Message, MessageOptions, StreamEvent};
-use crate::client::traits::{LlmProvider, StreamMsgFuture};
+use crate::client::traits::{LLMProvider, StreamMsgFuture};
 
 // Azure OpenAI configuration
 #[derive(Clone)]
@@ -99,13 +99,13 @@ impl OpenAIProvider {
     }
 }
 
-impl LlmProvider for OpenAIProvider {
+impl LLMProvider for OpenAIProvider {
     fn send_msg(
         &self,
         client: &HttpClient,
         messages: &[Message],
         options: &MessageOptions,
-    ) -> Pin<Box<dyn Future<Output = Result<Message, LlmError>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Message, LLMError>> + Send>> {
         let client = client.clone();
         let model = self.model.clone();
         let api_url = self.api_url();
@@ -154,7 +154,7 @@ impl LlmProvider for OpenAIProvider {
                             match std::str::from_utf8(&bytes) {
                                 Ok(text) => buffer.push_str(text),
                                 Err(_) => {
-                                    yield Err(LlmError::new("SSE_DECODE_ERROR", "Invalid UTF-8 in stream"));
+                                    yield Err(LLMError::new("SSE_DECODE_ERROR", "Invalid UTF-8 in stream"));
                                     return;
                                 }
                             }
@@ -186,7 +186,7 @@ impl LlmProvider for OpenAIProvider {
 
             Ok(Box::pin(event_stream)
                 as Pin<
-                    Box<dyn Stream<Item = Result<StreamEvent, LlmError>> + Send>,
+                    Box<dyn Stream<Item = Result<StreamEvent, LLMError>> + Send>,
                 >)
         })
     }
